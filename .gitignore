@@ -1,2 +1,36 @@
-MCU-backups/
+# KiCad
+Hardware/MCU/MCU-backups/
+~*.kicad_*.lck
+
+# Editor history
 .history
+
+# Unity — generated/per-user
+Software/Library/
+Software/Temp/
+Software/Obj/
+Software/Build/
+Software/Builds/
+Software/Logs/
+Software/UserSettings/
+Software/MemoryCaptures/
+Software/[Aa]ssets/AssetStoreTools*
+
+# Unity — generated solution/project files
+Software/*.csproj
+Software/*.sln
+Software/*.unityproj
+Software/*.user
+Software/*.suo
+Software/*.pidb
+Software/*.booproj
+Software/sysinfo.txt
+
+# Unity — build artifacts
+*.apk
+*.aab
+*.unitypackage
+
+# OS noise
+.DS_Store
+Thumbs.db
