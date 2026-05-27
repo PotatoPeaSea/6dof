@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,6 +10,22 @@ namespace VirtualFlux.Sim
         SolderWire,
         FluxPen,
         FluxPaste,
+    }
+
+    public readonly struct ToolDepositEvent
+    {
+        public readonly Pad Pad;
+        public readonly int CellX;
+        public readonly int CellY;
+        public readonly bool IronTipOnSameCell;
+
+        public ToolDepositEvent(Pad pad, int cellX, int cellY, bool ironTipOnSameCell)
+        {
+            Pad = pad;
+            CellX = cellX;
+            CellY = cellY;
+            IronTipOnSameCell = ironTipOnSameCell;
+        }
     }
 
     /// <summary>
@@ -26,6 +43,9 @@ namespace VirtualFlux.Sim
         [SerializeField] private float ironSnapRadiusMeters = 0.003f;
 
         public ToolMode Mode { get; private set; } = ToolMode.Iron;
+
+        public event Action<ToolDepositEvent> FluxApplied;
+        public event Action<ToolDepositEvent> SolderFed;
 
         private void Update()
         {
@@ -53,12 +73,14 @@ namespace VirtualFlux.Sim
             var (cx, cy) = WorldToCell(pad, localHit);
 
             // Snap to iron tip if it is over the same pad and within snap radius.
+            bool ironTipOnSameCell = false;
             if (iron != null && iron.Tip != null)
             {
                 var tipLocal = pad.transform.InverseTransformPoint(iron.Tip.position);
                 if (Vector2.Distance(new Vector2(tipLocal.x, tipLocal.z), new Vector2(localHit.x, localHit.z)) <= ironSnapRadiusMeters)
                 {
                     (cx, cy) = WorldToCell(pad, tipLocal);
+                    ironTipOnSameCell = true;
                 }
             }
 
@@ -68,10 +90,12 @@ namespace VirtualFlux.Sim
                     if (pad.Flow.GetTemp(cx, cy) >= pad.Flow.MeltingPointC)
                     {
                         pad.Flow.AddSolder(cx, cy, solderFeedRatePerSec * Time.deltaTime);
+                        SolderFed?.Invoke(new ToolDepositEvent(pad, cx, cy, ironTipOnSameCell));
                     }
                     break;
                 case ToolMode.FluxPen:
                     pad.Flow.ApplyFlux(cx, cy, fluxPenAmountPerSec * Time.deltaTime);
+                    FluxApplied?.Invoke(new ToolDepositEvent(pad, cx, cy, ironTipOnSameCell));
                     break;
                 case ToolMode.FluxPaste:
                     for (int dx = -1; dx <= 1; dx++)
@@ -84,6 +108,7 @@ namespace VirtualFlux.Sim
                             pad.Flow.ApplyFlux(nx, ny, fluxPasteAmountPerSec * Time.deltaTime);
                         }
                     }
+                    FluxApplied?.Invoke(new ToolDepositEvent(pad, cx, cy, ironTipOnSameCell));
                     break;
             }
         }

@@ -4,9 +4,9 @@ using UnityEngine;
 namespace VirtualFlux.Gerber
 {
     /// <summary>
-    /// V1 loader: reads a path from a Unity Inspector field or env var and imports.
-    /// A native file picker (StandaloneFileBrowser) can be wired in later without
-    /// touching downstream code.
+    /// V1 loader: imports a single .gbr file or a zipped Gerber bundle. Path comes from
+    /// an Inspector field, the VIRTUAL_FLUX_GERBER env var, or a default repo-relative
+    /// fallback. A native file picker can replace this layer without changing the parser.
     /// </summary>
     public sealed class GerberLoadUI : MonoBehaviour
     {
@@ -22,8 +22,16 @@ namespace VirtualFlux.Gerber
             }
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
-            var file = GerberParser.ParseFile(path);
+            var text = GerberZipReader.ReadCopperLayer(path);
+            if (text == null) return;
+            var file = GerberParser.Parse(text);
             GerberMeshBuilder.Build(file, transform, copperMaterial);
         }
+
+        /// <summary>
+        /// Convenience pass-through retained for back-compat with existing tests.
+        /// New code should call <see cref="GerberZipReader.ReadCopperLayer"/>.
+        /// </summary>
+        public static string ReadCopperLayer(string path) => GerberZipReader.ReadCopperLayer(path);
     }
 }
