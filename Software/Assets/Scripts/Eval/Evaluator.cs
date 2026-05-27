@@ -28,8 +28,22 @@ namespace VirtualFlux.Eval
         public bool SolderFedAtIronTip;
         public bool SawBurnt;
         public bool SawLifted;
+        public float SolderVolume;
 
         public float AvgAngleDeg => AngleSampleCount > 0 ? AngleDegSampleSum / AngleSampleCount : 0f;
+
+        public void Reset()
+        {
+            DwellSec = 0f;
+            PeakC = 0f;
+            AngleDegSampleSum = 0f;
+            AngleSampleCount = 0;
+            FluxAppliedBeforeHeat = false;
+            SolderFedAtIronTip = false;
+            SawBurnt = false;
+            SawLifted = false;
+            SolderVolume = 0f;
+        }
     }
 
     public sealed class Evaluator
@@ -71,6 +85,17 @@ namespace VirtualFlux.Eval
             if (ironTipPresentOnSameCell) obs.SolderFedAtIronTip = true;
         }
 
+        public void RecordSolderVolume(Pad pad, float totalVolume)
+        {
+            if (!_byPad.TryGetValue(pad, out var obs)) return;
+            obs.SolderVolume = totalVolume;
+        }
+
+        public void Reset()
+        {
+            foreach (var obs in _byPad.Values) obs.Reset();
+        }
+
         public EvalResult Score()
         {
             var result = new EvalResult { Passed = true };
@@ -91,6 +116,9 @@ namespace VirtualFlux.Eval
                     AddRule(result, $"{p.name}: flux applied before heat", o.FluxAppliedBeforeHeat, "");
                 if (_case.RequireSolderFedAtIronTip)
                     AddRule(result, $"{p.name}: solder fed at iron tip", o.SolderFedAtIronTip, "");
+                AddRule(result, $"{p.name}: solder volume in [{_case.MinSolderVolume:0.00}, {_case.MaxSolderVolume:0.00}]",
+                    o.SolderVolume >= _case.MinSolderVolume && o.SolderVolume <= _case.MaxSolderVolume,
+                    $"actual {o.SolderVolume:0.00}");
                 if (_case.ForbidBurnt)
                     AddRule(result, $"{p.name}: not burnt", !o.SawBurnt, "");
                 if (_case.ForbidLifted)

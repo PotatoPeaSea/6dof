@@ -1,18 +1,33 @@
+using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 namespace VirtualFlux.Eval
 {
     /// <summary>
     /// Minimal V1 HUD that renders the latest <see cref="EvalResult"/> into a UI Toolkit
-    /// document. Call <see cref="Render"/> from the controlling MonoBehaviour after Score().
+    /// document. The controlling MonoBehaviour subscribes to <see cref="ScoreRequested"/>
+    /// and <see cref="ResetRequested"/> (R and T by default) and calls <see cref="Render"/>
+    /// after each scoring pass.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class EvalHUD : MonoBehaviour
     {
+        public event Action ScoreRequested;
+        public event Action ResetRequested;
+
         private UIDocument _doc;
 
         private void Awake() => _doc = GetComponent<UIDocument>();
+
+        private void Update()
+        {
+            var kb = Keyboard.current;
+            if (kb == null) return;
+            if (kb.rKey.wasPressedThisFrame) ScoreRequested?.Invoke();
+            if (kb.tKey.wasPressedThisFrame) ResetRequested?.Invoke();
+        }
 
         public void Render(EvalResult result)
         {
@@ -32,6 +47,12 @@ namespace VirtualFlux.Eval
                 row.style.color = rule.Passed ? new StyleColor(new Color(0.8f, 0.9f, 0.8f)) : new StyleColor(new Color(1f, 0.6f, 0.6f));
                 root.Add(row);
             }
+        }
+
+        public void Clear()
+        {
+            if (_doc == null) return;
+            _doc.rootVisualElement.Clear();
         }
     }
 }

@@ -17,6 +17,7 @@ namespace VirtualFlux.Tests
             tc.MinDwellSec = 1f; tc.MaxDwellSec = 3f;
             tc.MinPeakC = 250f; tc.MaxPeakC = 360f;
             tc.MinAngleDeg = 40f; tc.MaxAngleDeg = 55f;
+            tc.MinSolderVolume = 0.2f; tc.MaxSolderVolume = 1.5f;
             return (tc, pad, host);
         }
 
@@ -30,6 +31,7 @@ namespace VirtualFlux.Tests
                 ev.RecordFluxApplied(pad, padWasHotAlready: false);
                 for (int i = 0; i < 400; i++) ev.RecordContact(pad, 0.005f, 45f, 320f);
                 ev.RecordSolderFed(pad, ironTipPresentOnSameCell: true);
+                ev.RecordSolderVolume(pad, 0.7f);
 
                 var r = ev.Score();
                 Assert.IsTrue(r.Passed, "ideal run should pass; got: " +
