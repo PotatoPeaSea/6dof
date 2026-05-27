@@ -31,6 +31,10 @@ Software/sysinfo.txt
 *.aab
 *.unitypackage
 
+# Standalone test runner (dotnet)
+Software/Tests/StandaloneRunner/bin/
+Software/Tests/StandaloneRunner/obj/
+
 # OS noise
 .DS_Store
 Thumbs.db

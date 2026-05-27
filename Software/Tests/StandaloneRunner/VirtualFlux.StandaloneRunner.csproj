@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <RootNamespace>VirtualFlux.StandaloneRunner</RootNamespace>
+    <LangVersion>10</LangVersion>
+    <NoWarn>CS0414;CS0649;CS0169;CS8632</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="UnityShims.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="..\..\Assets\Scripts\Gerber\GerberParser.cs" Link="Linked\GerberParser.cs" />
+    <Compile Include="..\..\Assets\Scripts\Gerber\GerberZipReader.cs" Link="Linked\GerberZipReader.cs" />
+    <Compile Include="..\..\Assets\Scripts\Sim\SolderState.cs" Link="Linked\SolderState.cs" />
+    <Compile Include="..\..\Assets\Scripts\Sim\FluxModel.cs" Link="Linked\FluxModel.cs" />
+    <Compile Include="..\..\Assets\Scripts\Sim\ThermalModel.cs" Link="Linked\ThermalModel.cs" />
+    <Compile Include="..\..\Assets\Scripts\Sim\SolderFlow.cs" Link="Linked\SolderFlow.cs" />
+    <Compile Include="..\..\Assets\Scripts\Sim\Pad.cs" Link="Linked\Pad.cs" />
+    <Compile Include="..\..\Assets\Scripts\Eval\TestCase.cs" Link="Linked\TestCase.cs" />
+    <Compile Include="..\..\Assets\Scripts\Eval\Evaluator.cs" Link="Linked\Evaluator.cs" />
+  </ItemGroup>
+</Project>
