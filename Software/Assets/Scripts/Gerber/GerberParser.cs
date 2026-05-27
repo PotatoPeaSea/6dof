@@ -69,6 +69,11 @@ namespace VirtualFlux.Gerber
             while (i < text.Length)
             {
                 char c = text[i];
+                if (c == '\n' || c == '\r' || c == ' ' || c == '\t')
+                {
+                    i++;
+                    continue;
+                }
                 if (c == '%')
                 {
                     int end = text.IndexOf('%', i + 1);
