@@ -68,7 +68,7 @@ namespace VirtualFlux.Sim
                 {
                     float vol = _solderVolume[x, y];
                     if (vol <= 0f) continue;
-                    if (_tempC[x, y] < MeltingPointC) continue;
+                    if (_tempC[x, y] < MeltingPointC) { _scratch[x, y] += vol; continue; }
 
                     float selfWeight = _flux[x, y].WettingWeight();
                     float totalWeight = selfWeight;

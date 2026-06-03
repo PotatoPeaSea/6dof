@@ -22,7 +22,7 @@ namespace VirtualFlux.Input
             // docs/serial-protocol.md and assign Latest from the most recent sample.
         }
 
-        internal static bool TryParsePoseLine(string line, out IronSample sample)
+        public static bool TryParsePoseLine(string line, out IronSample sample)
         {
             sample = default;
             if (string.IsNullOrEmpty(line) || line[0] != 'P')
