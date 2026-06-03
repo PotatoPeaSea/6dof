@@ -11,7 +11,8 @@ As5600::As5600(const char *name, TwoWire &bus, int pinSda, int pinScl,
 bool As5600::readReg8(uint8_t reg, uint8_t &value) {
   bus_->beginTransmission(address_);
   bus_->write(reg);
-  if (bus_->endTransmission(false) != 0) { // repeated start, keep bus
+  if (bus_->endTransmission(true) != 0) { // send stop; ng driver dislikes
+                                          // the repeated-start combo
     return false;
   }
   if (bus_->requestFrom(address_, (uint8_t)1) != 1) {
@@ -28,7 +29,7 @@ bool As5600::readReg8(uint8_t reg, uint8_t &value) {
 bool As5600::readReg12(uint8_t reg, uint16_t &value) {
   bus_->beginTransmission(address_);
   bus_->write(reg);
-  if (bus_->endTransmission(false) != 0) {
+  if (bus_->endTransmission(true) != 0) { // send stop (see readReg8)
     return false;
   }
   if (bus_->requestFrom(address_, (uint8_t)2) != 2) {
@@ -41,7 +42,11 @@ bool As5600::readReg12(uint8_t reg, uint16_t &value) {
 }
 
 void As5600::begin(uint32_t clockHz) {
-  bus_->begin(pinSda_, pinScl_, clockHz);
+  if (!bus_->begin(pinSda_, pinScl_, clockHz)) {
+    Serial.printf("[%s] I2C bus begin() failed on SDA=%d SCL=%d.\n", name_,
+                  pinSda_, pinScl_);
+    return;
+  }
 
   // Per the datasheet, confirm a magnet is present before trusting any angle.
   // MD must be 1; reading ANGLE without it risks latching a garbage value.
