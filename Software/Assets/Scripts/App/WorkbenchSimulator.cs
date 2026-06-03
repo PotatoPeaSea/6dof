@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using VirtualFlux.Eval;
 using VirtualFlux.Hardware;
@@ -24,13 +25,24 @@ namespace VirtualFlux.App
         [SerializeField] private float padHotThresholdC = 60f;
 
         private Evaluator _evaluator;
+        private TestCase _runtimeCase;
+        private readonly List<Pad> _pads = new List<Pad>();
 
         public Evaluator Evaluator => _evaluator;
 
         private void Start()
         {
             if (testCase == null) return;
-            _evaluator = new Evaluator(testCase);
+
+            // Pads live in the scene; a TestCase asset can't hold references to scene objects,
+            // so discover them here and feed a runtime copy of the tuning windows (carrying the
+            // discovered pads) to the evaluator.
+            _pads.Clear();
+            _pads.AddRange(FindObjectsByType<Pad>(FindObjectsSortMode.None));
+            _runtimeCase = Instantiate(testCase);
+            _runtimeCase.TargetPads = new List<Pad>(_pads);
+            _evaluator = new Evaluator(_runtimeCase);
+
             if (toolBelt != null)
             {
                 toolBelt.FluxApplied += OnFluxApplied;
@@ -55,6 +67,7 @@ namespace VirtualFlux.App
                 evalHUD.ScoreRequested -= OnScoreRequested;
                 evalHUD.ResetRequested -= OnResetRequested;
             }
+            if (_runtimeCase != null) Destroy(_runtimeCase);
         }
 
         private void FixedUpdate()
@@ -65,7 +78,7 @@ namespace VirtualFlux.App
             var tipPos = iron.Tip != null ? iron.Tip.position : iron.transform.position;
             var ironForward = iron.Tip != null ? iron.Tip.forward : iron.transform.forward;
 
-            foreach (var pad in testCase.TargetPads)
+            foreach (var pad in _pads)
             {
                 if (pad == null) continue;
 
@@ -103,7 +116,7 @@ namespace VirtualFlux.App
         private void OnScoreRequested()
         {
             if (_evaluator == null || testCase == null) return;
-            foreach (var pad in testCase.TargetPads)
+            foreach (var pad in _pads)
             {
                 if (pad == null) continue;
                 _evaluator.RecordSolderVolume(pad, SumSolderVolume(pad));
