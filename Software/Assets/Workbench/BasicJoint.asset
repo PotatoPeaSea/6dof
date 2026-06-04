@@ -26,3 +26,4 @@ MonoBehaviour:
   RequireSolderFedAtIronTip: 1
   ForbidBurnt: 1
   ForbidLifted: 1
+  ForbidBridging: 1
