@@ -47,7 +47,7 @@ namespace VirtualFlux.Editor
             var padMaterial = CreateUrpMaterial("PadMaterial", new Color(0.72f, 0.45f, 0.20f));
             var boardMaterial = CreateUrpMaterial("BoardMaterial", new Color(0.10f, 0.30f, 0.16f));
             var ironMaterial = CreateUrpMaterial("IronMaterial", new Color(0.55f, 0.57f, 0.60f));
-            var panel = GetOrCreatePanelSettings();
+            EnsureResourcesPanel();
             var testCase = CreateTestCase();
             AssetDatabase.SaveAssets();
 
@@ -74,15 +74,22 @@ namespace VirtualFlux.Editor
             board.transform.localScale = new Vector3(0.02f, 1f, 0.02f); // Plane is 10 u → 0.2 m
             board.GetComponent<MeshRenderer>().sharedMaterial = boardMaterial;
 
-            // --- Pad (unit-square local XZ mesh + collider + Pad sim) ---
-            var pad = new GameObject("Pad");
-            pad.transform.position = new Vector3(0f, 0.0005f, 0f); // just above the board
-            pad.transform.localScale = new Vector3(0.02f, 1f, 0.02f); // 2 cm pad
-            pad.AddComponent<MeshFilter>().sharedMesh = padMesh;
-            pad.AddComponent<MeshRenderer>().sharedMaterial = padMaterial;
-            pad.AddComponent<MeshCollider>().sharedMesh = padMesh;
-            pad.AddComponent<Pad>();
-            pad.AddComponent<PadVisualizer>();
+            // --- Pads: a short SMD-style row so solder can bridge the gaps ---
+            const int padCount = 3;
+            const float padSize = 0.008f;    // 8 mm pad
+            const float padSpacing = 0.011f; // 3 mm gap between pads
+            for (int i = 0; i < padCount; i++)
+            {
+                float x = (i - (padCount - 1) * 0.5f) * padSpacing;
+                var pad = new GameObject($"Pad_{i}");
+                pad.transform.position = new Vector3(x, 0.0005f, 0f); // just above the board
+                pad.transform.localScale = new Vector3(padSize, 1f, padSize);
+                pad.AddComponent<MeshFilter>().sharedMesh = padMesh;
+                pad.AddComponent<MeshRenderer>().sharedMaterial = padMaterial;
+                pad.AddComponent<MeshCollider>().sharedMesh = padMesh;
+                pad.AddComponent<Pad>();
+                pad.AddComponent<PadVisualizer>();
+            }
 
             // --- Iron rig: KeyboardIronInput + IronController, a cosmetic body, and a Tip ---
             var iron = new GameObject("Iron");
@@ -108,15 +115,17 @@ namespace VirtualFlux.Editor
             // --- ToolBelt ---
             var toolBelt = new GameObject("ToolBelt").AddComponent<ToolBelt>();
 
-            // --- HUDs (each needs a UIDocument + PanelSettings) ---
-            var statusHud = AddHud<StatusHUD>("StatusHUD", panel);
-            var evalHud = AddHud<EvalHUD>("EvalHUD", panel);
-            AddHud<LatencyHUD>("LatencyHUD", panel);
+            // --- HUDs (UIDocuments; panel bound at runtime by HudPanelBinder from Resources) ---
+            var statusHud = AddHud<StatusHUD>("StatusHUD");
+            var evalHud = AddHud<EvalHUD>("EvalHUD");
+            AddHud<LatencyHUD>("LatencyHUD");
+            new GameObject("HudPanelBinder").AddComponent<HudPanelBinder>();
 
-            // --- Sim driver ---
+            // --- Sim driver + bridge monitor ---
             var sim = new GameObject("WorkbenchSimulator").AddComponent<WorkbenchSimulator>();
+            var bridge = new GameObject("BridgeMonitor").AddComponent<BridgeMonitor>();
 
-            // --- wire every serialized reference ---
+            // --- wire scene-object references ---
             SetRef(ironCtl, "inputSourceBehaviour", keyboard);
             SetRef(ironCtl, "tip", tip.transform);
             SetRef(toolBelt, "iron", ironCtl);
@@ -126,9 +135,11 @@ namespace VirtualFlux.Editor
             SetRef(sim, "iron", ironCtl);
             SetRef(sim, "toolBelt", toolBelt);
             SetRef(sim, "evalHUD", evalHud);
+            SetRef(bridge, "simulator", sim);
+            // TestCase ref may not persist from a freshly-built scene; WorkbenchSimulator falls
+            // back to default windows if so. The HUD panel is bound at runtime by HudPanelBinder.
             SetRef(sim, "testCase", testCase);
 
-            // --- save ---
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
@@ -172,20 +183,13 @@ namespace VirtualFlux.Editor
             return mat;
         }
 
-        private static PanelSettings GetOrCreatePanelSettings()
+        // Panel lives under Resources/ so HudPanelBinder can load it by name at runtime.
+        private static void EnsureResourcesPanel()
         {
             var theme = GetOrCreateRuntimeTheme();
+            EnsureFolder("Assets", "Resources");
+            const string path = "Assets/Resources/WorkbenchPanelSettings.asset";
 
-            // Prefer an existing, already-themed PanelSettings: it carries Unity's correct default
-            // initialization (scale, DPI, scale mode) that a raw CreateInstance can miss, which
-            // otherwise leaves the HUDs not rendering.
-            foreach (var guid in AssetDatabase.FindAssets("t:PanelSettings"))
-            {
-                var existing = AssetDatabase.LoadAssetAtPath<PanelSettings>(AssetDatabase.GUIDToAssetPath(guid));
-                if (existing != null && existing.themeStyleSheet != null) return existing;
-            }
-
-            const string path = GenFolder + "/WorkbenchPanelSettings.asset";
             var ps = AssetDatabase.LoadAssetAtPath<PanelSettings>(path);
             if (ps == null)
             {
@@ -193,10 +197,9 @@ namespace VirtualFlux.Editor
                 ps.name = "WorkbenchPanelSettings";
                 AssetDatabase.CreateAsset(ps, path);
             }
-            ps.themeStyleSheet = theme;
+            if (ps.themeStyleSheet == null) ps.themeStyleSheet = theme;
             EditorUtility.SetDirty(ps);
             AssetDatabase.SaveAssetIfDirty(ps);
-            return ps;
         }
 
         private static ThemeStyleSheet GetOrCreateRuntimeTheme()
@@ -233,12 +236,10 @@ namespace VirtualFlux.Editor
 
         // ----- helpers -----
 
-        private static T AddHud<T>(string name, PanelSettings panel) where T : MonoBehaviour
+        private static T AddHud<T>(string name) where T : MonoBehaviour
         {
             var go = new GameObject(name);
-            var doc = go.AddComponent<UIDocument>();
-            // Assign via SerializedObject (not the property) so it persists to the saved scene.
-            SetRef(doc, "m_PanelSettings", panel);
+            go.AddComponent<UIDocument>(); // panel bound at runtime by HudPanelBinder
             return go.AddComponent<T>();
         }
 
