@@ -27,6 +27,8 @@ namespace VirtualFlux.App
         private Evaluator _evaluator;
         private TestCase _runtimeCase;
         private readonly List<Pad> _pads = new List<Pad>();
+        private SolderablePin[] _allPins;
+        private SolderableComponent[] _allComponents;
 
         public Evaluator Evaluator => _evaluator;
 
@@ -42,6 +44,9 @@ namespace VirtualFlux.App
             _runtimeCase.TargetPads = new List<Pad>(_pads);
             _evaluator = new Evaluator(_runtimeCase);
 
+            _allPins = FindObjectsByType<SolderablePin>(FindObjectsSortMode.None);
+            _allComponents = FindObjectsByType<SolderableComponent>(FindObjectsSortMode.None);
+
             if (toolBelt != null)
             {
                 toolBelt.FluxApplied += OnFluxApplied;
@@ -49,7 +54,6 @@ namespace VirtualFlux.App
             }
             if (evalHUD != null)
             {
-                evalHUD.ScoreRequested += OnScoreRequested;
                 evalHUD.ResetRequested += OnResetRequested;
             }
         }
@@ -63,10 +67,47 @@ namespace VirtualFlux.App
             }
             if (evalHUD != null)
             {
-                evalHUD.ScoreRequested -= OnScoreRequested;
                 evalHUD.ResetRequested -= OnResetRequested;
             }
             if (_runtimeCase != null) Destroy(_runtimeCase);
+        }
+
+        private void Update()
+        {
+            if (evalHUD == null) return;
+
+            // Find active pad: closest to iron tip or tweezers cursor
+            Pad activePad = null;
+            float minDist = 0.05f; // within 5cm of iron tip
+            var tipPos = iron != null && iron.Tip != null ? iron.Tip.position : (iron != null ? iron.transform.position : Vector3.zero);
+            
+            foreach (var p in _pads)
+            {
+                if (p == null) continue;
+                float d = Vector3.Distance(p.transform.position, tipPos);
+                if (d < minDist)
+                {
+                    minDist = d;
+                    activePad = p;
+                }
+            }
+
+            if (activePad == null)
+            {
+                // Fall back to mouse hover raycast
+                var mouse = UnityEngine.InputSystem.Mouse.current;
+                if (mouse != null && Camera.main != null)
+                {
+                    var ray = Camera.main.ScreenPointToRay(mouse.position.ReadValue());
+                    if (Physics.Raycast(ray, out var hit, 5f))
+                    {
+                        var pad = hit.collider.GetComponentInParent<Pad>();
+                        if (pad != null) activePad = pad;
+                    }
+                }
+            }
+
+            evalHUD.RenderGuidance(activePad, _allPins, _allComponents);
         }
 
         private void FixedUpdate()
@@ -110,17 +151,6 @@ namespace VirtualFlux.App
         {
             if (_evaluator == null || e.Pad == null) return;
             _evaluator.RecordSolderFed(e.Pad, e.IronTipOnSameCell);
-        }
-
-        private void OnScoreRequested()
-        {
-            if (_evaluator == null) return;
-            foreach (var pad in _pads)
-            {
-                if (pad == null) continue;
-                _evaluator.RecordSolderVolume(pad, SumSolderVolume(pad));
-            }
-            evalHUD?.Render(_evaluator.Score());
         }
 
         private void OnResetRequested()

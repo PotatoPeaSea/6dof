@@ -44,7 +44,7 @@ namespace VirtualFlux.Editor
 
             // --- supporting assets (created first so the scene can reference them) ---
             var padMesh = CreateUnitPadMesh();
-            var padMaterial = CreateUrpMaterial("PadMaterial", new Color(0.72f, 0.45f, 0.20f));
+            var padMaterial = CreateUrpMaterial("PadMaterial", new Color(0.72f, 0.45f, 0.20f), 0.8f, 0.5f);
             var boardMaterial = CreateUrpMaterial("BoardMaterial", new Color(0.10f, 0.30f, 0.16f));
             var ironMaterial = CreateUrpMaterial("IronMaterial", new Color(0.55f, 0.57f, 0.60f));
             EnsureResourcesPanel();
@@ -57,7 +57,7 @@ namespace VirtualFlux.Editor
             var cam = Object.FindFirstObjectByType<Camera>();
             if (cam != null)
             {
-                cam.transform.position = new Vector3(0f, 0.18f, -0.18f);
+                cam.transform.position = new Vector3(0f, 0.12f, -0.12f);
                 cam.transform.rotation = Quaternion.LookRotation((Vector3.zero - cam.transform.position).normalized, Vector3.up);
                 cam.nearClipPlane = 0.01f;
                 cam.fieldOfView = 55f;
@@ -88,8 +88,16 @@ namespace VirtualFlux.Editor
                 pad.AddComponent<MeshRenderer>().sharedMaterial = padMaterial;
                 pad.AddComponent<MeshCollider>().sharedMesh = padMesh;
                 pad.AddComponent<Pad>();
-                pad.AddComponent<PadVisualizer>();
+                var padVis = pad.AddComponent<PadVisualizer>();
+                SetFloat(padVis, "blobDiameterFracOfPad", 0.85f);
+                SetFloat(padVis, "blobHeightFracOfDiameter", 0.2f);
             }
+
+            // --- Resistors (Solderable Components) ---
+            var resistorBodyMaterial = CreateUrpMaterial("ResistorBodyMaterial", new Color(0.12f, 0.45f, 0.70f)); // nice blue body
+            var resistorPinMaterial = CreateUrpMaterial("ResistorPinMaterial", new Color(0.85f, 0.85f, 0.88f), 0.9f, 0.8f);  // shiny silver pins
+            CreateResistor("Resistor_0", new Vector3(-0.012f, 0.004f, 0.015f), resistorBodyMaterial, resistorPinMaterial);
+            CreateResistor("Resistor_1", new Vector3(0.012f, 0.004f, 0.015f), resistorBodyMaterial, resistorPinMaterial);
 
             // --- Iron rig: KeyboardIronInput + IronController, a cosmetic body, and a Tip ---
             var iron = new GameObject("Iron");
@@ -172,13 +180,43 @@ namespace VirtualFlux.Editor
             return mesh;
         }
 
-        private static Material CreateUrpMaterial(string assetName, Color color)
+        private static Texture2D GetOrCreateWhiteTexture()
+        {
+            const string path = GenFolder + "/DefaultWhite.asset";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (tex == null)
+            {
+                tex = new Texture2D(2, 2);
+                var colors = new[] { Color.white, Color.white, Color.white, Color.white };
+                tex.SetPixels(colors);
+                tex.Apply();
+                AssetDatabase.CreateAsset(tex, path);
+            }
+            return tex;
+        }
+
+        private static Material CreateUrpMaterial(string assetName, Color color, float metallic = 0f, float smoothness = 0.5f)
         {
             var shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
             var mat = new Material(shader) { name = assetName };
             mat.color = color;
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", metallic);
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
+            if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", smoothness); // Standard fallback
+            // Ensure texture keywords are enabled by assigning a saved white texture asset
+            var whiteTex = GetOrCreateWhiteTexture();
+            if (mat.HasProperty("_BaseMap"))
+            {
+                mat.SetTexture("_BaseMap", whiteTex);
+                mat.EnableKeyword("_BASE_MAP");
+            }
+            if (mat.HasProperty("_MainTex"))
+            {
+                mat.SetTexture("_MainTex", whiteTex);
+                mat.EnableKeyword("_MAIN_TEX");
+            }
             AssetDatabase.CreateAsset(mat, GenFolder + "/" + assetName + ".mat");
             return mat;
         }
@@ -234,6 +272,62 @@ namespace VirtualFlux.Editor
             return tc;
         }
 
+        private static void CreateResistor(string name, Vector3 startPos, Material bodyMat, Material pinMat)
+        {
+            var root = new GameObject(name);
+            root.transform.position = startPos;
+            var rb = root.AddComponent<Rigidbody>();
+            rb.mass = 0.1f;
+            rb.isKinematic = true; // Kinematic by default to prevent violent sub-centimeter PhysX collision launches
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+
+            root.AddComponent<SolderableComponent>();
+
+            // Body mesh (cylinder horizontal in local X)
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            body.name = "Body";
+            body.transform.SetParent(root.transform, false);
+            body.transform.localPosition = Vector3.zero;
+            body.transform.localRotation = Quaternion.Euler(0f, 0f, 90f); // horizontal along X
+            body.transform.localScale = new Vector3(0.002f, 0.004f, 0.002f); // 2mm dia, 8mm length
+            body.GetComponent<Renderer>().sharedMaterial = bodyMat;
+
+            // Remove default cylinder collider on visual body
+            var bodyCol = body.GetComponent<Collider>();
+            if (bodyCol != null) Object.DestroyImmediate(bodyCol);
+
+            // Left Pin
+            var pinL = new GameObject("Pin_Left");
+            pinL.transform.SetParent(root.transform, false);
+            pinL.transform.localPosition = new Vector3(-0.005f, -0.002f, 0f); // extend down 2mm
+            var visualL = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            visualL.name = "Visual";
+            visualL.transform.SetParent(pinL.transform, false);
+            visualL.transform.localPosition = new Vector3(0f, 0.001f, 0f); // center visual
+            visualL.transform.localScale = new Vector3(0.0006f, 0.001f, 0.0006f);
+            visualL.GetComponent<Renderer>().sharedMaterial = pinMat;
+            Object.DestroyImmediate(visualL.GetComponent<Collider>());
+            pinL.AddComponent<SolderablePin>();
+
+            // Right Pin
+            var pinR = new GameObject("Pin_Right");
+            pinR.transform.SetParent(root.transform, false);
+            pinR.transform.localPosition = new Vector3(0.005f, -0.002f, 0f); // extend down 2mm
+            var visualR = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            visualR.name = "Visual";
+            visualR.transform.SetParent(pinR.transform, false);
+            visualR.transform.localPosition = new Vector3(0f, 0.001f, 0f); // center visual
+            visualR.transform.localScale = new Vector3(0.0006f, 0.001f, 0.0006f);
+            visualR.GetComponent<Renderer>().sharedMaterial = pinMat;
+            Object.DestroyImmediate(visualR.GetComponent<Collider>());
+            pinR.AddComponent<SolderablePin>();
+
+            // Root box collider for tweezers dragging & collision
+            var boxCol = root.AddComponent<BoxCollider>();
+            boxCol.size = new Vector3(0.012f, 0.005f, 0.003f);
+            boxCol.center = new Vector3(0f, -0.001f, 0f);
+        }
+
         // ----- helpers -----
 
         private static T AddHud<T>(string name) where T : MonoBehaviour
@@ -256,6 +350,21 @@ namespace VirtualFlux.Editor
             prop.objectReferenceValue = value;
             so.ApplyModifiedProperties();
             EditorUtility.SetDirty(target); // ensure asset references (panel, testCase) persist on save
+        }
+
+        private static void SetFloat(Component target, string propertyName, float value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(propertyName);
+            if (prop == null)
+            {
+                Debug.LogError($"WorkbenchSceneBuilder: '{target.GetType().Name}' has no serialized " +
+                               $"field '{propertyName}'.");
+                return;
+            }
+            prop.floatValue = value;
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(target);
         }
 
         private static void EnsureFolder(string parent, string name)

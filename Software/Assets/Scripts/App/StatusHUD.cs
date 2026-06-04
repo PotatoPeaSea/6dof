@@ -24,7 +24,18 @@ namespace VirtualFlux.App
         private void Awake()
         {
             _doc = GetComponent<UIDocument>();
+        }
+
+        private bool _uiInitialized;
+
+        private void InitializeUI()
+        {
+            if (_doc == null) _doc = GetComponent<UIDocument>();
+            if (_doc == null) return;
             var root = _doc.rootVisualElement;
+            if (root == null) return;
+
+            root.Clear();
 
             var panel = new VisualElement();
             panel.style.position = Position.Absolute;
@@ -36,9 +47,11 @@ namespace VirtualFlux.App
             _tool = AddRow(panel, "tool: —");
             _temp = AddRow(panel, "tip:  —");
             _energized = AddRow(panel, "iron: off");
-            _hints = AddRow(panel, "[1-4] tools  scroll: temp  [Space] heat  [Enter] score  [T] reset  [R] reset pose");
+            _hints = AddRow(panel, "[1-5] tools (5=tweezers)  scroll: temp  [Space] heat  [T] reset  [R] reset pose");
             _hints.style.color = new StyleColor(new Color(0.7f, 0.7f, 0.7f));
             _hints.style.fontSize = 11;
+
+            _uiInitialized = true;
         }
 
         private static Label AddRow(VisualElement parent, string text)
@@ -52,6 +65,13 @@ namespace VirtualFlux.App
 
         private void Update()
         {
+            if (!_uiInitialized || _tool == null || _temp == null || _energized == null)
+            {
+                InitializeUI();
+            }
+
+            if (!_uiInitialized || _tool == null || _temp == null || _energized == null) return;
+
             if (toolBelt != null) _tool.text = $"tool: {toolBelt.Mode}";
             if (iron != null)
             {

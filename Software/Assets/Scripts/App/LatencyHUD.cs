@@ -14,19 +14,31 @@ namespace VirtualFlux.App
         private int _frames;
         private float _timer;
 
-        private void Awake()
+        private void InitializeUI()
         {
-            _doc = GetComponent<UIDocument>();
+            if (_doc == null) _doc = GetComponent<UIDocument>();
+            if (_doc == null) return;
+            var root = _doc.rootVisualElement;
+            if (root == null) return;
+
+            root.Clear();
             _label = new Label("…");
             _label.style.position = Position.Absolute;
             _label.style.top = 8;
             _label.style.right = 12;
             _label.style.color = new StyleColor(Color.white);
-            _doc.rootVisualElement.Add(_label);
+            root.Add(_label);
         }
 
         private void Update()
         {
+            if (_label == null)
+            {
+                InitializeUI();
+            }
+
+            if (_label == null) return;
+
             _accumDt += Time.unscaledDeltaTime;
             _frames++;
             _timer += Time.unscaledDeltaTime;
