@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -47,16 +48,45 @@ namespace VirtualFlux.Eval
             panel.style.backgroundColor = new StyleColor(new Color(0f, 0f, 0f, 0.6f));
             root.Add(panel);
 
-            var summary = new Label(result.Passed ? "PASS" : "FAIL");
+            // Collapse to one line per pad: the rule list is grouped, then each pad shows PASS or
+            // FAIL with the short names of its failing rules — so the whole board fits on screen.
+            var order = new List<string>();
+            var byPad = new Dictionary<string, List<RuleResult>>();
+            foreach (var rule in result.Rules)
+            {
+                var key = string.IsNullOrEmpty(rule.PadName) ? "—" : rule.PadName;
+                if (!byPad.TryGetValue(key, out var list))
+                {
+                    list = new List<RuleResult>();
+                    byPad[key] = list;
+                    order.Add(key);
+                }
+                list.Add(rule);
+            }
+
+            int passedPads = 0;
+            foreach (var key in order)
+            {
+                if (byPad[key].TrueForAll(r => r.Passed)) passedPads++;
+            }
+
+            var summary = new Label((result.Passed ? "PASS" : "FAIL") + $"   {passedPads}/{order.Count} pads");
             summary.style.color = result.Passed ? new StyleColor(Color.green) : new StyleColor(Color.red);
             summary.style.fontSize = 24;
             panel.Add(summary);
 
-            foreach (var rule in result.Rules)
+            foreach (var key in order)
             {
-                var row = new Label((rule.Passed ? "[OK]  " : "[X]   ") + rule.Name +
-                                    (string.IsNullOrEmpty(rule.Detail) ? "" : "  —  " + rule.Detail));
-                row.style.color = rule.Passed ? new StyleColor(new Color(0.8f, 0.9f, 0.8f)) : new StyleColor(new Color(1f, 0.6f, 0.6f));
+                var rules = byPad[key];
+                var failed = new List<string>();
+                foreach (var r in rules)
+                {
+                    if (!r.Passed) failed.Add(r.ShortName);
+                }
+                bool padPassed = failed.Count == 0;
+
+                var row = new Label(padPassed ? $"[OK]  {key}" : $"[X]   {key}  —  {string.Join(", ", failed)}");
+                row.style.color = padPassed ? new StyleColor(new Color(0.8f, 0.9f, 0.8f)) : new StyleColor(new Color(1f, 0.6f, 0.6f));
                 panel.Add(row);
             }
         }
