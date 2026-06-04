@@ -10,7 +10,10 @@ namespace VirtualFlux.Input
         [SerializeField] private float rotateSpeedDeg = 90f;
         [SerializeField] private Vector3 initialPosition = new Vector3(0f, 0.05f, 0f);
         [SerializeField] private Vector3 initialEulerDeg = new Vector3(45f, 0f, 0f);
-        [SerializeField] private float[] tempPresetsC = { 25f, 280f, 330f, 360f, 400f };
+        [SerializeField] private float minTempC = 25f;
+        [SerializeField] private float maxTempC = 400f;
+        [SerializeField] private float tempStepC = 10f;
+        [SerializeField] private float initialSetpointC = 25f;
 
         private Vector3 _position;
         private Quaternion _rotation;
@@ -46,11 +49,13 @@ namespace VirtualFlux.Input
                 Axis(kb.oKey, kb.uKey)) * (rotateSpeedDeg * deltaTime);
             _rotation = Quaternion.Euler(euler) * _rotation;
 
-            for (int i = 0; i < tempPresetsC.Length && i < 5; i++)
+            var mouse = Mouse.current;
+            if (mouse != null)
             {
-                if (DigitJustPressed(kb, i + 1))
+                float scrollY = mouse.scroll.ReadValue().y;
+                if (Mathf.Abs(scrollY) > 0.01f)
                 {
-                    _setpointC = tempPresetsC[i];
+                    _setpointC = Mathf.Clamp(_setpointC + Mathf.Sign(scrollY) * tempStepC, minTempC, maxTempC);
                 }
             }
 
@@ -69,7 +74,7 @@ namespace VirtualFlux.Input
         {
             _position = initialPosition;
             _rotation = Quaternion.Euler(initialEulerDeg);
-            _setpointC = tempPresetsC.Length > 0 ? tempPresetsC[0] : 25f;
+            _setpointC = Mathf.Clamp(initialSetpointC, minTempC, maxTempC);
             _energized = false;
         }
 
@@ -79,19 +84,6 @@ namespace VirtualFlux.Input
             if (positive != null && positive.isPressed) v += 1f;
             if (negative != null && negative.isPressed) v -= 1f;
             return v;
-        }
-
-        private static bool DigitJustPressed(Keyboard kb, int digit)
-        {
-            return digit switch
-            {
-                1 => kb.digit1Key.wasPressedThisFrame,
-                2 => kb.digit2Key.wasPressedThisFrame,
-                3 => kb.digit3Key.wasPressedThisFrame,
-                4 => kb.digit4Key.wasPressedThisFrame,
-                5 => kb.digit5Key.wasPressedThisFrame,
-                _ => false,
-            };
         }
     }
 }

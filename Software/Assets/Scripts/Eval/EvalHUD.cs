@@ -25,7 +25,7 @@ namespace VirtualFlux.Eval
         {
             var kb = Keyboard.current;
             if (kb == null) return;
-            if (kb.rKey.wasPressedThisFrame) ScoreRequested?.Invoke();
+            if (kb.enterKey.wasPressedThisFrame) ScoreRequested?.Invoke();
             if (kb.tKey.wasPressedThisFrame) ResetRequested?.Invoke();
         }
 
@@ -35,17 +35,29 @@ namespace VirtualFlux.Eval
             var root = _doc.rootVisualElement;
             root.Clear();
 
+            // Own panel, positioned clear of the StatusHUD (top-left) so the result is visible.
+            var panel = new VisualElement();
+            panel.style.position = Position.Absolute;
+            panel.style.top = 120;
+            panel.style.left = 12;
+            panel.style.paddingLeft = 10;
+            panel.style.paddingRight = 10;
+            panel.style.paddingTop = 6;
+            panel.style.paddingBottom = 6;
+            panel.style.backgroundColor = new StyleColor(new Color(0f, 0f, 0f, 0.6f));
+            root.Add(panel);
+
             var summary = new Label(result.Passed ? "PASS" : "FAIL");
             summary.style.color = result.Passed ? new StyleColor(Color.green) : new StyleColor(Color.red);
             summary.style.fontSize = 24;
-            root.Add(summary);
+            panel.Add(summary);
 
             foreach (var rule in result.Rules)
             {
                 var row = new Label((rule.Passed ? "[OK]  " : "[X]   ") + rule.Name +
                                     (string.IsNullOrEmpty(rule.Detail) ? "" : "  —  " + rule.Detail));
                 row.style.color = rule.Passed ? new StyleColor(new Color(0.8f, 0.9f, 0.8f)) : new StyleColor(new Color(1f, 0.6f, 0.6f));
-                root.Add(row);
+                panel.Add(row);
             }
         }
 

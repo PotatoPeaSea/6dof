@@ -36,7 +36,7 @@ namespace VirtualFlux.App
             _tool = AddRow(panel, "tool: —");
             _temp = AddRow(panel, "tip:  —");
             _energized = AddRow(panel, "iron: off");
-            _hints = AddRow(panel, "[1] iron  [2] solder  [3] flux pen  [4] flux paste  [R] score  [T] reset");
+            _hints = AddRow(panel, "[1-4] tools  scroll: temp  [Space] heat  [Enter] score  [T] reset  [R] reset pose");
             _hints.style.color = new StyleColor(new Color(0.7f, 0.7f, 0.7f));
             _hints.style.fontSize = 11;
         }

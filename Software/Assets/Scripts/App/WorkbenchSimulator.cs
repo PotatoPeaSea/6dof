@@ -21,7 +21,7 @@ namespace VirtualFlux.App
         [SerializeField] private ToolBelt toolBelt;
         [SerializeField] private EvalHUD evalHUD;
         [SerializeField] private TestCase testCase;
-        [SerializeField] private float contactDistanceMeters = 0.005f;
+        [SerializeField] private float contactDistanceMeters = 0.01f;
         [SerializeField] private float padHotThresholdC = 60f;
 
         private Evaluator _evaluator;
