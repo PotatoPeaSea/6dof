@@ -1,3 +1,4 @@
+using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -43,7 +44,9 @@ namespace VirtualFlux.Editor
 
             // --- supporting assets (created first so the scene can reference them) ---
             var padMesh = CreateUnitPadMesh();
-            var padMaterial = CreatePadMaterial();
+            var padMaterial = CreateUrpMaterial("PadMaterial", new Color(0.72f, 0.45f, 0.20f));
+            var boardMaterial = CreateUrpMaterial("BoardMaterial", new Color(0.10f, 0.30f, 0.16f));
+            var ironMaterial = CreateUrpMaterial("IronMaterial", new Color(0.55f, 0.57f, 0.60f));
             var panel = GetOrCreatePanelSettings();
             var testCase = CreateTestCase();
             AssetDatabase.SaveAssets();
@@ -69,6 +72,7 @@ namespace VirtualFlux.Editor
             board.name = "Board";
             board.transform.position = Vector3.zero;
             board.transform.localScale = new Vector3(0.02f, 1f, 0.02f); // Plane is 10 u → 0.2 m
+            board.GetComponent<MeshRenderer>().sharedMaterial = boardMaterial;
 
             // --- Pad (unit-square local XZ mesh + collider + Pad sim) ---
             var pad = new GameObject("Pad");
@@ -78,6 +82,7 @@ namespace VirtualFlux.Editor
             pad.AddComponent<MeshRenderer>().sharedMaterial = padMaterial;
             pad.AddComponent<MeshCollider>().sharedMesh = padMesh;
             pad.AddComponent<Pad>();
+            pad.AddComponent<PadVisualizer>();
 
             // --- Iron rig: KeyboardIronInput + IronController, a cosmetic body, and a Tip ---
             var iron = new GameObject("Iron");
@@ -91,10 +96,13 @@ namespace VirtualFlux.Editor
             body.transform.localPosition = new Vector3(0f, 0f, -0.04f);
             body.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // length along local Z
             body.transform.localScale = new Vector3(0.006f, 0.04f, 0.006f);
+            body.GetComponent<MeshRenderer>().sharedMaterial = ironMaterial;
 
             var tip = new GameObject("Tip");
             tip.transform.SetParent(iron.transform, false);
-            tip.transform.localPosition = new Vector3(0f, 0f, 0.04f); // tip end, +Z down the shaft
+            // Heating/contact point at the iron's controlled origin, which is the cylinder's
+            // front face — so the hot spot is where the iron visibly is, not floating ahead of it.
+            tip.transform.localPosition = Vector3.zero;
             tip.transform.localRotation = Quaternion.identity;
 
             // --- ToolBelt ---
@@ -127,7 +135,8 @@ namespace VirtualFlux.Editor
             AssetDatabase.Refresh();
 
             Debug.Log($"Workbench scene built at {ScenePath}. Press Play, then: WASD/QE move, " +
-                      "IJKL/UO rotate, 1–5 temp presets, hold Space to energize, R score, T reset.");
+                      "IJKL/UO rotate, scroll to set temp, hold Space to energize, 1–4 tools, " +
+                      "Enter to score, T to reset.");
         }
 
         // ----- asset builders -----
@@ -152,47 +161,64 @@ namespace VirtualFlux.Editor
             return mesh;
         }
 
-        private static Material CreatePadMaterial()
+        private static Material CreateUrpMaterial(string assetName, Color color)
         {
             var shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
-            var mat = new Material(shader) { name = "PadMaterial" };
-            var copper = new Color(0.72f, 0.45f, 0.20f);
-            mat.color = copper;
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", copper);
-            AssetDatabase.CreateAsset(mat, GenFolder + "/PadMaterial.mat");
+            var mat = new Material(shader) { name = assetName };
+            mat.color = color;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            AssetDatabase.CreateAsset(mat, GenFolder + "/" + assetName + ".mat");
             return mat;
         }
 
         private static PanelSettings GetOrCreatePanelSettings()
         {
-            // Reuse an existing PanelSettings if the project already has one.
+            var theme = GetOrCreateRuntimeTheme();
+
+            // Prefer an existing, already-themed PanelSettings: it carries Unity's correct default
+            // initialization (scale, DPI, scale mode) that a raw CreateInstance can miss, which
+            // otherwise leaves the HUDs not rendering.
             foreach (var guid in AssetDatabase.FindAssets("t:PanelSettings"))
             {
                 var existing = AssetDatabase.LoadAssetAtPath<PanelSettings>(AssetDatabase.GUIDToAssetPath(guid));
-                if (existing != null) return existing;
+                if (existing != null && existing.themeStyleSheet != null) return existing;
             }
 
-            var ps = ScriptableObject.CreateInstance<PanelSettings>();
-            ps.name = "WorkbenchPanelSettings";
-
-            var themes = AssetDatabase.FindAssets("t:ThemeStyleSheet");
-            if (themes.Length > 0)
+            const string path = GenFolder + "/WorkbenchPanelSettings.asset";
+            var ps = AssetDatabase.LoadAssetAtPath<PanelSettings>(path);
+            if (ps == null)
             {
-                ps.themeStyleSheet = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(
-                    AssetDatabase.GUIDToAssetPath(themes[0]));
+                ps = ScriptableObject.CreateInstance<PanelSettings>();
+                ps.name = "WorkbenchPanelSettings";
+                AssetDatabase.CreateAsset(ps, path);
             }
-            else
-            {
-                Debug.LogWarning(
-                    "WorkbenchSceneBuilder: no ThemeStyleSheet found in the project, so the HUDs " +
-                    "may render blank. Create one once via Assets ▸ Create ▸ UI Toolkit ▸ Panel " +
-                    "Settings (that generates a default theme), then assign it to " +
-                    GenFolder + "/WorkbenchPanelSettings.asset.");
-            }
-
-            AssetDatabase.CreateAsset(ps, GenFolder + "/WorkbenchPanelSettings.asset");
+            ps.themeStyleSheet = theme;
+            EditorUtility.SetDirty(ps);
+            AssetDatabase.SaveAssetIfDirty(ps);
             return ps;
+        }
+
+        private static ThemeStyleSheet GetOrCreateRuntimeTheme()
+        {
+            // Reuse any theme already in the project.
+            var found = AssetDatabase.FindAssets("t:ThemeStyleSheet");
+            if (found.Length > 0)
+            {
+                return AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(AssetDatabase.GUIDToAssetPath(found[0]));
+            }
+
+            // Otherwise generate the default runtime theme — the same one-line .tss that
+            // Assets ▸ Create ▸ UI Toolkit ▸ Panel Settings produces.
+            EnsureFolder("Assets", "UI Toolkit");
+            EnsureFolder("Assets/UI Toolkit", "UnityThemes");
+            const string themePath = "Assets/UI Toolkit/UnityThemes/UnityDefaultRuntimeTheme.tss";
+            if (!File.Exists(themePath))
+            {
+                File.WriteAllText(themePath, "@import url(\"unity-theme://default\");\n");
+                AssetDatabase.ImportAsset(themePath, ImportAssetOptions.ForceSynchronousImport);
+            }
+            return AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(themePath);
         }
 
         private static TestCase CreateTestCase()
@@ -210,7 +236,9 @@ namespace VirtualFlux.Editor
         private static T AddHud<T>(string name, PanelSettings panel) where T : MonoBehaviour
         {
             var go = new GameObject(name);
-            go.AddComponent<UIDocument>().panelSettings = panel;
+            var doc = go.AddComponent<UIDocument>();
+            // Assign via SerializedObject (not the property) so it persists to the saved scene.
+            SetRef(doc, "m_PanelSettings", panel);
             return go.AddComponent<T>();
         }
 
@@ -225,7 +253,8 @@ namespace VirtualFlux.Editor
                 return;
             }
             prop.objectReferenceValue = value;
-            so.ApplyModifiedPropertiesWithoutUndo();
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(target); // ensure asset references (panel, testCase) persist on save
         }
 
         private static void EnsureFolder(string parent, string name)
