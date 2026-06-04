@@ -33,5 +33,6 @@ namespace VirtualFlux.Eval
         public bool RequireSolderFedAtIronTip = true;
         public bool ForbidBurnt = true;
         public bool ForbidLifted = true;
+        public bool ForbidBridging = true;
     }
 }

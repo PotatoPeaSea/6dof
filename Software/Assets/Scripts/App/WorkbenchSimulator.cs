@@ -32,14 +32,13 @@ namespace VirtualFlux.App
 
         private void Start()
         {
-            if (testCase == null) return;
-
             // Pads live in the scene; a TestCase asset can't hold references to scene objects,
             // so discover them here and feed a runtime copy of the tuning windows (carrying the
-            // discovered pads) to the evaluator.
+            // discovered pads) to the evaluator. If no TestCase is assigned, fall back to default
+            // windows so the sim still runs (heating, scoring) instead of going inert.
             _pads.Clear();
             _pads.AddRange(FindObjectsByType<Pad>(FindObjectsSortMode.None));
-            _runtimeCase = Instantiate(testCase);
+            _runtimeCase = testCase != null ? Instantiate(testCase) : ScriptableObject.CreateInstance<TestCase>();
             _runtimeCase.TargetPads = new List<Pad>(_pads);
             _evaluator = new Evaluator(_runtimeCase);
 
@@ -72,7 +71,7 @@ namespace VirtualFlux.App
 
         private void FixedUpdate()
         {
-            if (_evaluator == null || iron == null || testCase == null) return;
+            if (_evaluator == null || iron == null) return;
 
             float dt = Time.fixedDeltaTime;
             var tipPos = iron.Tip != null ? iron.Tip.position : iron.transform.position;
@@ -115,7 +114,7 @@ namespace VirtualFlux.App
 
         private void OnScoreRequested()
         {
-            if (_evaluator == null || testCase == null) return;
+            if (_evaluator == null) return;
             foreach (var pad in _pads)
             {
                 if (pad == null) continue;

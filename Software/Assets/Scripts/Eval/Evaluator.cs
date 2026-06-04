@@ -28,6 +28,7 @@ namespace VirtualFlux.Eval
         public bool SolderFedAtIronTip;
         public bool SawBurnt;
         public bool SawLifted;
+        public bool SawBridge;
         public float SolderVolume;
 
         public float AvgAngleDeg => AngleSampleCount > 0 ? AngleDegSampleSum / AngleSampleCount : 0f;
@@ -42,6 +43,7 @@ namespace VirtualFlux.Eval
             SolderFedAtIronTip = false;
             SawBurnt = false;
             SawLifted = false;
+            SawBridge = false;
             SolderVolume = 0f;
         }
     }
@@ -91,6 +93,12 @@ namespace VirtualFlux.Eval
             obs.SolderVolume = totalVolume;
         }
 
+        public void RecordBridge(Pad a, Pad b)
+        {
+            if (_byPad.TryGetValue(a, out var oa)) oa.SawBridge = true;
+            if (_byPad.TryGetValue(b, out var ob)) ob.SawBridge = true;
+        }
+
         public void Reset()
         {
             foreach (var obs in _byPad.Values) obs.Reset();
@@ -123,6 +131,8 @@ namespace VirtualFlux.Eval
                     AddRule(result, $"{p.name}: not burnt", !o.SawBurnt, "");
                 if (_case.ForbidLifted)
                     AddRule(result, $"{p.name}: not lifted", !o.SawLifted, "");
+                if (_case.ForbidBridging)
+                    AddRule(result, $"{p.name}: no solder bridge", !o.SawBridge, "");
             }
             return result;
         }
