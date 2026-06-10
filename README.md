@@ -10,7 +10,7 @@ A hardware-in-the-loop soldering simulator. A 6DOF arm (custom KiCad PCBs in `Ha
 | `Hardware/Controller/` | Controller board — KiCad project + Gerbers.                    |
 | `Hardware/Gerbers/` | Zipped Gerber bundles for fabrication.                            |
 | `Hardware/assets.pretty/` | Shared KiCad footprint library.                             |
-| `Hardware/Firmware/`| Placeholder. Firmware not implemented in V1.                      |
+| `Firmware/`         | PlatformIO firmware project for the 6DOF arm.                     |
 | `Software/`         | Unity 6 LTS project. Open this folder in Unity Hub.               |
 | `docs/`             | Cross-cutting docs — start with `serial-protocol.md`.             |
 | `CLAUDE.md`         | Working agreement for AI coding assistants.                       |
@@ -18,15 +18,14 @@ A hardware-in-the-loop soldering simulator. A 6DOF arm (custom KiCad PCBs in `Ha
 
 ## V1 scope
 
-- Keyboard-driven virtual iron (6DOF) — arm firmware deferred.
+- Keyboard-driven virtual iron (6DOF).
 - Sample PCB prefab + Gerber import for the MCU board.
-- Heuristic thermal model, flux model (cold/active/burnt), grid-based solder flow.
-- Toolbelt: iron / solder wire / flux pen / flux paste with explicit click-to-feed.
-- Deterministic test cases (angle, dwell, peak temp, flux-before-heat, solder-at-tip).
+- Heuristic thermal model, flux model (cold/active/burnt), grid-based solder flow, and solder wetting / fillet capillary action.
+- Toolbelt: iron / solder wire / flux pen / flux paste / tweezers (with component placement and physical bonding) with explicit click-to-feed.
+- Deterministic test cases and real-time soldering process guidance HUD.
 
 ## Out of V1
 
-- Arm firmware (only the serial protocol is locked — see `docs/serial-protocol.md`).
 - AI joint-quality evaluation.
 - Haptics, VR, BLE.
 

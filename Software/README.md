@@ -19,7 +19,7 @@ Open this folder in Unity Hub with **Unity 6 LTS (6000.0.x)**. URP is the active
 | Temp preset     | digits 1–5          |
 | Reset pose      | R                   |
 | Mouse-look      | hold RMB + mouse XY |
-| Select tool     | 1 iron / 2 wire / 3 flux pen / 4 flux paste |
+| Select tool     | 1 iron / 2 wire / 3 flux pen / 4 flux paste / 5 tweezers |
 | Feed / apply    | hold LMB            |
 | Inspect cell    | RMB click (when not held for mouse-look)    |
 
