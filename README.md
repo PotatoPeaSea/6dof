@@ -18,7 +18,7 @@ A hardware-in-the-loop soldering simulator. A 6DOF arm (custom KiCad PCBs in `Ha
 
 ## V1 scope
 
-- Keyboard-driven virtual iron (6DOF).
+- Keyboard-driven virtual iron (6DOF) — arm firmware in progress.
 - Sample PCB prefab + Gerber import for the MCU board.
 - Heuristic thermal model, flux model (cold/active/burnt), grid-based solder flow, and solder wetting / fillet capillary action.
 - Toolbelt: iron / solder wire / flux pen / flux paste / tweezers (with component placement and physical bonding) with explicit click-to-feed.
