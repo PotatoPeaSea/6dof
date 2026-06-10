@@ -15,7 +15,7 @@ This file tells Claude (and any other AI coding assistant) how to work in this r
 This repo is a hardware-in-the-loop soldering simulator. A physical 6DOF arm (KiCad-designed PCB + future firmware) streams pose to a Unity desktop app that simulates a soldering iron acting on a virtual PCB.
 
 - **Hardware language/tools:** KiCad 7+ (`.kicad_pcb`, `.kicad_sch`, `.kicad_pro`). Gerber output is RS-274X.
-- **Firmware (future):** C/C++ targeting the MCU on `Hardware/MCU/`. Not implemented in V1.
+- **Firmware:** C/C++ targeting the MCU on `Hardware/MCU/`. Located in `Firmware/6DoF Firmware/` using PlatformIO.
 - **Software language/runtime:** C# 9+, Unity 6 LTS (6000.0.x) with Universal Render Pipeline. Falls back to 2022.3 LTS only if explicitly requested.
 - **Software framework:** Unity Input System (new) for input, UI Toolkit (UXML/USS) for HUDs, Unity Test Framework for tests, Shader Graph for material effects.
 - **Package manager:** Unity Package Manager (UPM) via `Software/Packages/manifest.json`. No NuGet, no manual DLL drops. Don't add packages without flagging it.
@@ -35,8 +35,8 @@ Top-level folders are fixed. Don't create new top-level folders without asking.
   /Controller   # Controller board (KiCad project + Gerbers)
   /Gerbers      # zipped Gerber bundles for fabrication
   /assets.pretty# shared KiCad footprint library
-  /Firmware     # placeholder for future MCU firmware
   fp-lib-table  # KiCad footprint library table
+/Firmware       # PlatformIO firmware project for the 6DOF arm
 /Software       # Unity project — open this folder in Unity
   /Assets
     /Scripts    # C# source, grouped by subsystem (Input/Hardware/Sim/Gerber/Eval/App)
