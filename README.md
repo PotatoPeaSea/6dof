@@ -1,7 +1,7 @@
 # 6dofPCB — Virtual Flux (Product Requirements & Overview)
 
 ## 1. Product Vision
-**Virtual Flux** is a high-fidelity, hardware-in-the-loop soldering simulator. It bridges physical motion and virtual physics to create a realistic training and evaluation environment for hand soldering. By using a physical 6DOF (Six Degrees of Freedom) robotic arm that acts as the soldering iron, users can practice their technique on a virtual PCB rendered in a Unity desktop application. The simulation provides deterministic, physics-based reactions—including thermodynamics, flux activation, and solder wetting—coupled with real-time evaluation.
+**Virtual Flux** is a high-fidelity, hardware-in-the-loop soldering simulator. It bridges physical motion and virtual physics to create a realistic training and evaluation environment for hand soldering. By using a physical 6DOF (Six Degrees of Freedom) robotic arm that acts as the soldering iron (currently in development, with full keyboard/mouse fallbacks available now), users can practice their technique on a virtual PCB rendered in a Unity desktop application. The simulation provides deterministic, physics-based reactions—including thermodynamics, flux activation, and solder wetting—coupled with real-time evaluation.
 
 ## 2. Target Audience & Use Cases
 - **Soldering Trainees & Students**: Learn proper technique (angle, dwell time, temperature control, flux application) without consuming physical consumables or risking damage to expensive boards.
